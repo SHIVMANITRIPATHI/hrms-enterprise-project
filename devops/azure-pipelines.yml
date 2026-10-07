@@ -54,7 +54,9 @@ stages:
       displayName: 'Login to Azure Container Registry'
       inputs:
         command: 'login'
-        containerRegistry: '$(azureServiceConnection)'
+        containerRegistryType: 'Azure Container Registry'
+        azureSubscriptionEndpoint: '$(azureServiceConnection)'
+        azureContainerRegistry: '$(acrName).azurecr.io'
 
     - script: |
         # Build images with registry tags
