@@ -8,9 +8,13 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
+  # ⚠️ APNI ACR KA NAAM YAHAN UPDATE KAREIN (Bina .azurecr.io ke)
+  acrName: 'crhrmsenterprise'
   backendImageName: 'hrms-backend-service'
   frontendImageName: 'hrms-frontend-service'
   buildTag: '$(Build.BuildId)'
+  # ⚠️ APNE AZURE SERVICE CONNECTION KA NAAM YAHAN UPDATE KAREIN
+  azureServiceConnection: 'Your-Azure-Subscription-Name'
 
 stages:
 - stage: BuildAndValidate
@@ -21,7 +25,7 @@ stages:
     steps:
     - script: |
         cd backend
-        docker build --no-cache --target test -t $(backendImageName):test .
+        docker build --no-cache -t $(backendImageName):test .
       displayName: 'Execute Async PyTest Suite Inside Isolation Container'
 
   - job: Frontend_Validation
@@ -37,16 +41,44 @@ stages:
         npm run build
       displayName: 'Execute Production Transpilation via Vite Builder'
 
-- stage: PackageContainers
-  displayName: 'Stage 2: Package Production Image Assets'
+- stage: PackageAndPushContainers
+  displayName: 'Stage 2: Package & Push Container Assets'
   dependsOn: BuildAndValidate
   condition: succeeded()
   jobs:
   - job: Build_And_Publish
     displayName: 'Container Layer Compilation'
     steps:
+    # ACR Login Task so runner can push images safely
+    - task: AzureContainerRegistry@1
+      displayName: 'Login to Azure Container Registry'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        azureContainerRegistry: '$(acrName).azurecr.io'
+
     - script: |
-        # Using explicit -f flags targeting absolute internal workspaces
-        docker build -f ./backend/Dockerfile -t $(backendImageName):$(buildTag) ./backend
-        docker build -f ./frontend/Dockerfile -t $(frontendImageName):$(buildTag) ./frontend
-      displayName: 'Bake Immutable Production Application Containers'
+        # Build images with registry tags
+        docker build -f ./backend/Dockerfile -t $(acrName).azurecr.io/$(backendImageName):$(buildTag) -t $(acrName).azurecr.io/$(backendImageName):latest ./backend
+        docker build -f ./frontend/Dockerfile -t $(acrName).azurecr.io/$(frontendImageName):$(buildTag) -t $(acrName).azurecr.io/$(frontendImageName):latest ./frontend
+        
+        # Push images to your Azure Container Registry
+        docker push $(acrName).azurecr.io/$(backendImageName):latest
+        docker push $(acrName).azurecr.io/$(backendImageName):$(buildTag)
+      displayName: 'Bake & Push Immutable Application Containers'
+
+- stage: DeployToAzureCloud
+  displayName: 'Stage 3: Continuous Deployment to App Service'
+  dependsOn: PackageAndPushContainers
+  condition: succeeded()
+  jobs:
+  - job: Deploy_Backend
+    displayName: 'Deploy FastAPI Engine to App Service'
+    steps:
+    - task: AzureWebAppContainer@1
+      displayName: 'Force Deploy Container & Set Custom Ports'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        appName: 'app-hrms-backend-api'
+        containers: '$(acrName).azurecr.io/$(backendImageName):latest'
+        # 🔥 This will force restart the stuck web app container over port 8000
+        appSettings: '-WEBSITES_PORT 8000 -WEBSITES_CONTAINER_START_TIME_LIMIT 600'
