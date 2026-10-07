@@ -8,12 +8,12 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # ⚠️ APNI ACR KA NAAM YAHAN UPDATE KAREIN (Bina .azurecr.io ke)
+  # ⚠️ Pakka karein ki ye naam aapki registry ka hi hai
   acrName: 'crhrmsenterprise'
   backendImageName: 'hrms-backend-service'
   frontendImageName: 'hrms-frontend-service'
   buildTag: '$(Build.BuildId)'
-  # ⚠️ APNE AZURE SERVICE CONNECTION KA NAAM YAHAN UPDATE KAREIN
+  # ⚠️ Pakka karein ki ye naam aapke service connection ka hi hai
   azureServiceConnection: 'sc-hrms-enterprise'
 
 stages:
@@ -49,24 +49,26 @@ stages:
   - job: Build_And_Publish
     displayName: 'Container Layer Compilation'
     steps:
-    # 🔥 Using pre-installed Docker@2 connection task instead of AzureContainerRegistry@1
-    - task: Docker@2
-      displayName: 'Login to Azure Container Registry'
+    # 🔥 Using native AzureCLI@2 task to securely log in and push to your ACR
+    - task: AzureCLI@2
+      displayName: 'Login, Bake & Push Immutable Containers via Azure CLI'
       inputs:
-        command: 'login'
-        containerRegistryType: 'Azure Container Registry'
-        azureSubscriptionEndpoint: '$(azureServiceConnection)'
-        azureContainerRegistry: '$(acrName).azurecr.io'
-
-    - script: |
-        # Build images with registry tags
-        docker build -f ./backend/Dockerfile -t $(acrName).azurecr.io/$(backendImageName):$(buildTag) -t $(acrName).azurecr.io/$(backendImageName):latest ./backend
-        docker build -f ./frontend/Dockerfile -t $(acrName).azurecr.io/$(frontendImageName):$(buildTag) -t $(acrName).azurecr.io/$(frontendImageName):latest ./frontend
-        
-        # Push images to your Azure Container Registry
-        docker push $(acrName).azurecr.io/$(backendImageName):latest
-        docker push $(acrName).azurecr.io/$(backendImageName):$(buildTag)
-      displayName: 'Bake & Push Immutable Application Containers'
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # 1. Native Azure login handshake to your specific Container Registry
+          az acr login --name $(acrName)
+          
+          # 2. Build production images with absolute internal workspace targets
+          docker build -f ./backend/Dockerfile -t $(acrName).azurecr.io/$(backendImageName):$(buildTag) -t $(acrName).azurecr.io/$(backendImageName):latest ./backend
+          docker build -f ./frontend/Dockerfile -t $(acrName).azurecr.io/$(frontendImageName):$(buildTag) -t $(acrName).azurecr.io/$(frontendImageName):latest ./frontend
+          
+          # 3. Stream and push image layers to your cloud repository logs
+          docker push $(acrName).azurecr.io/$(backendImageName):latest
+          docker push $(acrName).azurecr.io/$(backendImageName):$(buildTag)
+          docker push $(acrName).azurecr.io/$(frontendImageName):latest
+          docker push $(acrName).azurecr.io/$(frontendImageName):$(buildTag)
 
 - stage: DeployToAzureCloud
   displayName: 'Stage 3: Continuous Deployment to App Service'
@@ -82,5 +84,5 @@ stages:
         azureSubscription: '$(azureServiceConnection)'
         appName: 'app-hrms-backend-api'
         containers: '$(acrName).azurecr.io/$(backendImageName):latest'
-        # Force restart the stuck web app container over port 8000
+        # Force fresh container spin-up over port 8000 using custom variables
         appSettings: '-WEBSITES_PORT 8000 -WEBSITES_CONTAINER_START_TIME_LIMIT 600'
