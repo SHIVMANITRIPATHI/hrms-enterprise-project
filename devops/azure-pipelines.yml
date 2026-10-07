@@ -21,7 +21,7 @@ stages:
     steps:
     - script: |
         cd backend
-        docker build --target test -t $(backendImageName):test .
+        docker build --no-cache --target test -t $(backendImageName):test .
       displayName: 'Execute Async PyTest Suite Inside Isolation Container'
 
   - job: Frontend_Validation
