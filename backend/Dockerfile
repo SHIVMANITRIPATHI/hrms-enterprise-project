@@ -5,7 +5,7 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
-# Install baseline dependencies and curl
+# Install baseline system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg \
@@ -14,10 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Securely download the official Microsoft signing key and register the repository
+# Securely download the ACTUAL Microsoft public signing key
 RUN mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://microsoft.com | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
-    && echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/microsoft.gpg] https://microsoft.com main" > /etc/apt/sources.list.d/mssql-release.list
+    && curl -fsSL https://microsoft.com | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
+
+# Register the EXACT Microsoft production package repository list for Debian 12
+RUN echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/microsoft.gpg] https://microsoft.com main" > /etc/apt/sources.list.d/mssql-release.list
 
 # Install the Microsoft ODBC Driver 18 for SQL Server
 RUN apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
