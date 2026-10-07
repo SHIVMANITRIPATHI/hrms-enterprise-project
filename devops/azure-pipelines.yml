@@ -46,6 +46,7 @@ stages:
     displayName: 'Container Layer Compilation'
     steps:
     - script: |
-        docker build -t $(backendImageName):$(buildTag) ./backend
-        docker build -t $(frontendImageName):$(buildTag) ./frontend
+        # Using explicit -f flags targeting absolute internal workspaces
+        docker build -f ./backend/Dockerfile -t $(backendImageName):$(buildTag) ./backend
+        docker build -f ./frontend/Dockerfile -t $(frontendImageName):$(buildTag) ./frontend
       displayName: 'Bake Immutable Production Application Containers'
