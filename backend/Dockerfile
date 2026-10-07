@@ -1,7 +1,7 @@
 # =========================================================================
 # STAGE 1: BASE RUNTIME ENVIRONMENT & DEPENDENCIES
 # =========================================================================
-FROM python:3.11-slim AS base
+FROM python:3.11-slim-bookworm AS base
 
 WORKDIR /app
 
@@ -14,35 +14,53 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Securely download the ACTUAL Microsoft public signing key
+# -------------------------------------------------------------------------
+# Microsoft SQL Server repository
+# Debian 12 / Bookworm
+# -------------------------------------------------------------------------
+
 RUN mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://microsoft.com | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+       | gpg --dearmor \
+       -o /etc/apt/keyrings/microsoft.gpg \
+    && chmod 644 /etc/apt/keyrings/microsoft.gpg
 
-# Register the EXACT Microsoft production package repository list for Debian 12
-RUN echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/microsoft.gpg] https://microsoft.com main" > /etc/apt/sources.list.d/mssql-release.list
+RUN echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
+    > /etc/apt/sources.list.d/microsoft-prod.list
 
-# Install the Microsoft ODBC Driver 18 for SQL Server
-RUN apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
-    msodbcsql18 \
+# Install Microsoft ODBC Driver 18
+RUN apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
+       msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
+# Python dependencies
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# =========================================================================
-# STAGE 2: BUILD VALIDATION RUNNER (PIPELINE TEST TARGET)
-# =========================================================================
-FROM base AS test
-COPY . .
-RUN pip install pytest && pytest || true
 
 # =========================================================================
-# STAGE 3: FINAL PRODUCTION RUNTIME ENGINE
+# STAGE 2: BUILD VALIDATION RUNNER
+# =========================================================================
+FROM base AS test
+
+COPY . .
+
+RUN pip install --no-cache-dir pytest
+
+RUN pytest
+
+
+# =========================================================================
+# STAGE 3: FINAL PRODUCTION RUNTIME
 # =========================================================================
 FROM base AS final
+
 COPY ./app ./app
 
 EXPOSE 8000
+
 ENV PYTHONUNBUFFERED=1
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
