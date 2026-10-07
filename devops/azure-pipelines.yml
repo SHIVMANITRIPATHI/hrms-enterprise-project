@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: LintAndTest
+    displayName: 'Lint & Test'
+    jobs:
+      - job: BackendCheck
+        displayName: 'Backend Python Lint & Test'
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+            displayName: 'Set Python 3.12'
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r backend/requirements.txt
+            displayName: 'Install Backend Dependencies'
+
+      - job: FrontendCheck
+        displayName: 'Frontend TypeScript Build & Lint'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+            displayName: 'Set Node.js 20.x'
+
+          - script: |
+              cd frontend
+              npm ci
+              npm run build
+            displayName: 'Build Frontend Application'
+
+  - stage: BuildDocker
+    displayName: 'Docker Container Build'
+    dependsOn: LintAndTest
+    condition: succeeded()
+    jobs:
+      - job: BuildImages
+        displayName: 'Build Docker Container Images'
+        steps:
+          - script: |
+              docker compose build
+            displayName: 'Docker Compose Build'

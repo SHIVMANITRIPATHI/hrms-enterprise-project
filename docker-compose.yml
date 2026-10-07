@@ -1,0 +1,50 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: hrms_local_db
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Enter@123
+      - MSSQL_PID=Developer
+    volumes:
+      - mssql_data:/var/opt/mssql
+    networks:
+      - hrms_network
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Enter@123" -Q "SELECT 1" -No -C || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrms_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=sqlserver
+      - DB_PORT=1433
+      - DB_USER=sa
+      - DB_PASSWORD=Enter@123
+      - DB_NAME=hrms_db
+      - DATABASE_URL=mssql+aioodbc://sa:Enter%40123@sqlserver:1433/hrms_db?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+      - ENVIRONMENT=production
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - hrms_network
+    restart: unless-stopped
+
+volumes:
+  mssql_data:
+
+networks:
+  hrms_network:
+    driver: bridge

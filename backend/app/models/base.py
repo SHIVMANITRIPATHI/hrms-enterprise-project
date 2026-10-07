@@ -1,0 +1,5 @@
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    """Base declarative class for all SQLAlchemy 2.x models in SHIVMANI HRMS."""
+    pass
