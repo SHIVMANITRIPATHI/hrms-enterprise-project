@@ -49,12 +49,12 @@ stages:
   - job: Build_And_Publish
     displayName: 'Container Layer Compilation'
     steps:
-    # ACR Login Task so runner can push images safely
-    - task: AzureContainerRegistry@1
+    # 🔥 Using pre-installed Docker@2 connection task instead of AzureContainerRegistry@1
+    - task: Docker@2
       displayName: 'Login to Azure Container Registry'
       inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        azureContainerRegistry: '$(acrName).azurecr.io'
+        command: 'login'
+        containerRegistry: '$(azureServiceConnection)'
 
     - script: |
         # Build images with registry tags
@@ -80,5 +80,5 @@ stages:
         azureSubscription: '$(azureServiceConnection)'
         appName: 'app-hrms-backend-api'
         containers: '$(acrName).azurecr.io/$(backendImageName):latest'
-        # 🔥 This will force restart the stuck web app container over port 8000
+        # Force restart the stuck web app container over port 8000
         appSettings: '-WEBSITES_PORT 8000 -WEBSITES_CONTAINER_START_TIME_LIMIT 600'
