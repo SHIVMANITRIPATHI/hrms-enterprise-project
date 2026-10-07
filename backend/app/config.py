@@ -1,36 +1,28 @@
+# =========================================================================
+# DYNAMIC CONFIGURATIONS LAYER (backend/app/config.py)
+# =========================================================================
 import os
-from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    APP_NAME: str = "SHIVMANI HRMS"
-    APP_VERSION: str = "1.0.0"
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    # System App Settings
+    PROJECT_NAME: str = "SHIVMANI HRMS Enterprise API"
+    API_V1_STR: str = "/api/v1"
+    
+    # Security Layer
+    # Azure App Service se read karega, na milne par default value lega
+    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "SUPER_SECRET_TOKEN_KEY_123!")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 Days
 
-    # Database Configuration (MS SQL Server)
-    DB_HOST: str = "127.0.0.1"
-    DB_PORT: str = "1433"
-    DB_USER: str = "sa"
-    DB_PASSWORD: str = "Enter@123"
-    DB_NAME: str = "hrms_db"
-    DATABASE_URL: str = "mssql+aioodbc://sa:Enter%40123@127.0.0.1:1433/hrms_db?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+    # Database Settings Layer (Dynamic Switch)
+    # Local Docker me ye local config lega, aur Azure me seedhe cloud DB se judega
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL", 
+        "mssql+pyodbc://sa:Enter@123@sqlserver:1433/hrms_db?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=no"
+    ) 
 
-    # Security & Secrets
-    SECRET_KEY: str = "shivmani-enterprise-hrms-secret-key-2026-production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
-
-    # CORS Origins
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ]
-
-    model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
-        extra="ignore"
-    )
+    class Config:
+        case_sensitive = True
+        env_file = ".env"
 
 settings = Settings()
