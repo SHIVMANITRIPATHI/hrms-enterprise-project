@@ -1,51 +1,51 @@
 trigger:
+  batch: true
   branches:
     include:
       - main
-      - develop
 
 pool:
   vmImage: 'ubuntu-latest'
 
+variables:
+  backendImageName: 'hrms-backend-service'
+  frontendImageName: 'hrms-frontend-service'
+  buildTag: '$(Build.BuildId)'
+
 stages:
-  - stage: LintAndTest
-    displayName: 'Lint & Test'
-    jobs:
-      - job: BackendCheck
-        displayName: 'Backend Python Lint & Test'
-        steps:
-          - task: UsePythonVersion@0
-            inputs:
-              versionSpec: '3.12'
-            displayName: 'Set Python 3.12'
+- stage: BuildAndValidate
+  displayName: 'Stage 1: Code Compilation & Test Suites'
+  jobs:
+  - job: Backend_Validation
+    displayName: 'Validate FastAPI Architecture'
+    steps:
+    - script: |
+        cd backend
+        docker build --target test -t $(backendImageName):test .
+      displayName: 'Execute Async PyTest Suite Inside Isolation Container'
 
-          - script: |
-              python -m pip install --upgrade pip
-              pip install -r backend/requirements.txt
-            displayName: 'Install Backend Dependencies'
+  - job: Frontend_Validation
+    displayName: 'Validate React TS Architecture'
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+      displayName: 'Provision Node.js Environment Engine'
+    - script: |
+        cd frontend
+        npm ci
+        npm run build
+      displayName: 'Execute Production Transpilation via Vite Builder'
 
-      - job: FrontendCheck
-        displayName: 'Frontend TypeScript Build & Lint'
-        steps:
-          - task: NodeTool@0
-            inputs:
-              versionSpec: '20.x'
-            displayName: 'Set Node.js 20.x'
-
-          - script: |
-              cd frontend
-              npm ci
-              npm run build
-            displayName: 'Build Frontend Application'
-
-  - stage: BuildDocker
-    displayName: 'Docker Container Build'
-    dependsOn: LintAndTest
-    condition: succeeded()
-    jobs:
-      - job: BuildImages
-        displayName: 'Build Docker Container Images'
-        steps:
-          - script: |
-              docker compose build
-            displayName: 'Docker Compose Build'
+- stage: PackageContainers
+  displayName: 'Stage 2: Package Production Image Assets'
+  dependsOn: BuildAndValidate
+  condition: succeeded()
+  jobs:
+  - job: Build_And_Publish
+    displayName: 'Container Layer Compilation'
+    steps:
+    - script: |
+        docker build -t $(backendImageName):$(buildTag) ./backend
+        docker build -t $(frontendImageName):$(buildTag) ./frontend
+      displayName: 'Bake Immutable Production Application Containers'
