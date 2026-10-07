@@ -14,7 +14,7 @@ variables:
   frontendImageName: 'hrms-frontend-service'
   buildTag: '$(Build.BuildId)'
   # ⚠️ APNE AZURE SERVICE CONNECTION KA NAAM YAHAN UPDATE KAREIN
-  azureServiceConnection: 'Your-Azure-Subscription-Name'
+  azureServiceConnection: 'sc-hrms-enterprise'
 
 stages:
 - stage: BuildAndValidate
