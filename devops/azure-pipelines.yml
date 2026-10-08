@@ -79,12 +79,28 @@ stages:
     displayName: 'Deploy FastAPI Engine to App Service'
     steps:
     - task: AzureWebAppContainer@1
-      displayName: 'Force Deploy Container & Inject Runtime Variables'
+      displayName: 'Force Deploy Container Assets'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         appName: 'app-hrms-backend-api'
         containers: '$(acrName).azurecr.io/$(backendImageName):latest'
-        # 💥 Force-injecting standard multi-threading connection parameters to unblock ports
         appSettings: '-WEBSITES_PORT 8000 -WEBSITES_CONTAINER_START_TIME_LIMIT 1800 -SCM_DO_BUILD_DURING_DEPLOYMENT false'
-        # 🚀 Telling Azure exact startup orchestration command to spin-up container loop
         configurationStrings: '-StartupCommand "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"'
+
+    # 🔥 Adding a native Azure CLI execution task to break the stuck portal buttons
+    - task: AzureCLI@2
+      displayName: 'Unlock & Force Restart App Service State via Cloud Engine'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Stopping Web App to release stuck threads..."
+          az webapp stop --name app-hrms-backend-api --resource-group rg-hrms-enterprise
+          
+          echo "Injecting clean environment sync configurations..."
+          az webapp config appsettings set --name app-hrms-backend-api --resource-group rg-hrms-enterprise --settings WEBSITES_PORT=8000
+          
+          echo "Force starting Web App with fresh container instantiation..."
+          az webapp start --name app-hrms-backend-api --resource-group rg-hrms-enterprise
+          echo "App Service successfully awakened!"
