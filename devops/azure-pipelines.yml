@@ -104,3 +104,30 @@ stages:
           echo "Force starting Web App with fresh container instantiation..."
           az webapp start --name app-hrms-backend-api --resource-group rg-hrms-enterprise
           echo "App Service successfully awakened!"
+
+ - job: Deploy_Frontend
+    displayName: 'Deploy React UI Engine to App Service'
+    dependsOn: Deploy_Backend
+    steps:
+    # 🚀 Step 1: Deploy Frontend Container to Azure Web App (Docker Container mode)
+    - task: AzureWebAppContainer@1
+      displayName: 'Force Deploy Frontend Container'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        appName: '$(frontendAppName)'
+        containers: '$(acrName).azurecr.io/$(frontendImageName):latest'
+        appSettings: '-WEBSITES_PORT 80 -WEBSITES_CONTAINER_START_TIME_LIMIT 1800 -SCM_DO_BUILD_DURING_DEPLOYMENT false'
+
+    # 🔥 Step 2: Force Reset to break portal loops and start UI container fresh
+    - task: AzureCLI@2
+      displayName: 'Unlock & Force Restart Frontend App Service'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Stopping Frontend Web App to release stuck threads..."
+          az webapp stop --name $(frontendAppName) --resource-group $(resourceGroupName)
+          az webapp config appsettings set --name $(frontendAppName) --resource-group $(resourceGroupName) --settings WEBSITES_PORT=80
+          az webapp start --name $(frontendAppName) --resource-group $(resourceGroupName)
+          echo "Frontend UI App Service successfully awakened!"
