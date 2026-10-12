@@ -6,8 +6,13 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "HRMS Enterprise"
-    APP_NAME: str = "HRMS Enterprise"  # <--- यह नई लाइन क्लास के अंदर जोड़ें
+    APP_NAME: str = "HRMS Enterprise"
     API_V1_STR: str = "/api/v1"
+    
+    # Missing Variables Configured Here to Prevent AttributeErrors
+    APP_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production")
+    CORS_ORIGINS: list = ["*"]
     
     # Security Layer
     # Azure App Service se read karega, na milne par default value lega

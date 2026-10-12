@@ -8,7 +8,7 @@ logger = logging.getLogger("hrms.database")
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    echo=False  # यहाँ सीधे False हार्डकोड कर दें
+    echo=False  # Direct hardcoded False to prevent debug mismatches
 )
 
 AsyncSessionLocal = async_sessionmaker(
