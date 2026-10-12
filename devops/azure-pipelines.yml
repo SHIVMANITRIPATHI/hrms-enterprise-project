@@ -107,6 +107,13 @@ stages:
     displayName: 'Deploy React UI Engine to App Service'
     dependsOn: Deploy_Backend
     steps:
+    - task: AzureStaticWebApp@0
+      displayName: 'Force Deploy Frontend to Static Web App'
+      inputs:
+        app_location: '/frontend'        # आपके फ्रंटएंड कोड का फोल्डर पाथ
+        output_location: '/frontend/dist' # Vite का बिल्ड आउटपुट फोल्डर
+        azure_static_web_apps_api_token: '$(76c9bd2528b9dc0b805204fe803271a9e6efecdc338063da4560739d7f9a9d6902-7d204b8b-fe3b-491d-b662-a7812712b3740002717073dca200)'
+
     # 🚀 Step 1: Deploy Frontend Container to Azure Web App (Docker Container mode)
     - task: AzureWebAppContainer@1
       displayName: 'Force Deploy Frontend Container'
