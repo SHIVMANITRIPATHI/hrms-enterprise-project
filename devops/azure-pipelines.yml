@@ -15,6 +15,9 @@ variables:
   buildTag: '$(Build.BuildId)'
   # ⚠️ Pakka karein ki ye naam aapke service connection ka hi hai
   azureServiceConnection: 'sc-hrms-enterprise'
+  # ⚠️ FrontEnd Resource configuration controls
+  frontendAppName: 'app-hrms-frontend-ui'
+  resourceGroupName: 'rg-hrms-enterprise'
 
 stages:
 - stage: BuildAndValidate
@@ -79,7 +82,7 @@ stages:
     displayName: 'Deploy FastAPI Engine to App Service'
     steps:
     - task: AzureWebAppContainer@1
-      displayName: 'Force Deploy Container Assets'
+      displayName: 'Force Deploy Backend Container'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         appName: 'app-hrms-backend-api'
@@ -87,25 +90,20 @@ stages:
         appSettings: '-WEBSITES_PORT 8000 -WEBSITES_CONTAINER_START_TIME_LIMIT 1800 -SCM_DO_BUILD_DURING_DEPLOYMENT false'
         configurationStrings: '-StartupCommand "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"'
 
-    # 🔥 Adding a native Azure CLI execution task to break the stuck portal buttons
     - task: AzureCLI@2
-      displayName: 'Unlock & Force Restart App Service State via Cloud Engine'
+      displayName: 'Unlock & Force Restart Backend App Service'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          echo "Stopping Web App to release stuck threads..."
-          az webapp stop --name app-hrms-backend-api --resource-group rg-hrms-enterprise
-          
-          echo "Injecting clean environment sync configurations..."
-          az webapp config appsettings set --name app-hrms-backend-api --resource-group rg-hrms-enterprise --settings WEBSITES_PORT=8000
-          
-          echo "Force starting Web App with fresh container instantiation..."
-          az webapp start --name app-hrms-backend-api --resource-group rg-hrms-enterprise
-          echo "App Service successfully awakened!"
+          echo "Stopping Backend Web App to release stuck threads..."
+          az webapp stop --name app-hrms-backend-api --resource-group $(resourceGroupName)
+          az webapp config appsettings set --name app-hrms-backend-api --resource-group $(resourceGroupName) --settings WEBSITES_PORT=8000
+          az webapp start --name app-hrms-backend-api --resource-group $(resourceGroupName)
+          echo "Backend App Service successfully awakened!"
 
- - job: Deploy_Frontend
+  - job: Deploy_Frontend
     displayName: 'Deploy React UI Engine to App Service'
     dependsOn: Deploy_Backend
     steps:
