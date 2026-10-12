@@ -40,6 +40,13 @@ stages:
         npm ci
         npm run build
       displayName: 'Execute Production Transpilation via Vite Builder'
+    
+    # 🔥 पहले से बने बिल्ड फोल्डर (dist) को अगले स्टेज के लिए सुरक्षित (Publish) करें
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: 'frontend/dist'
+        artifact: 'frontend-dist'
+      displayName: 'Publish Compiled Frontend UI Artifact'
 
 - stage: PackageAndPushContainers
   displayName: 'Stage 2: Package & Push Backend Assets'
@@ -49,7 +56,6 @@ stages:
   - job: Build_And_Publish
     displayName: 'Backend Container Layer Compilation'
     steps:
-    # 🔥 केवल बैकएंड कंटेनर को बिल्ड और पुश किया जाएगा क्योंकि फ्रंटएंड स्टेटिक वेब ऐप पर जा रहा है
     - task: AzureCLI@2
       displayName: 'Login, Bake & Push Immutable Backend Container via Azure CLI'
       inputs:
@@ -96,10 +102,18 @@ stages:
     displayName: 'Deploy React UI Engine to Static Web App'
     dependsOn: Deploy_Backend
     steps:
-    # 🚀 सुधरा हुआ स्टैटिक वेब ऐप टास्क - टोकन को बिना ब्रैकेट के सीधे स्ट्रिंग में डाला गया है
+    # 📥 Stage 1 में कंपाइल किए गए फ्रंटएंड 'dist' फोल्डर को यहाँ डाउनलोड करें
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        artifact: 'frontend-dist'
+        path: '$(Pipeline.Workspace)/frontend-dist'
+      displayName: 'Download Compiled Frontend UI Artifact'
+
+    # 🚀 सुधरा हुआ स्टैटिक वेब ऐप टास्क जो सीधे प्री-बिल्ड आर्टिफैक्ट को डिप्लॉय करेगा
     - task: AzureStaticWebApp@0
       displayName: 'Force Deploy Frontend to Static Web App'
       inputs:
-        app_location: '/frontend'        
-        output_location: '/frontend/dist' 
+        app_location: '/' # रूट डायरेक्टरी सेट करें
+        output_location: '$(Pipeline.Workspace)/frontend-dist' # डाउनलोड किए गए dist का पाथ
+        skip_app_build: true # 👈 Azure के इन-बिल्ट बिल्ड इंजन को बायपास करें
         azure_static_web_apps_api_token: '76c9bd2528b9dc0b805204fe803271a9e6efecdc338063da4560739d7f9a9d6902-7d204b8b-fe3b-491d-b662-a7812712b3740002717073dca200'
