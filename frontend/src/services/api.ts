@@ -8,7 +8,7 @@ import {
   OverviewDashboardReport, CompanySettings, AuditLog, EmployeeDocument
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://app-hrms-backend-api-cufhcxcjbpfzefa5.centralindia-01.azurewebsites.net/';
 
 // Token Management
 let authToken: string | null = localStorage.getItem('shivmani_auth_token');
