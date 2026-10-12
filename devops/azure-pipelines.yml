@@ -11,12 +11,9 @@ variables:
   # ⚠️ Pakka karein ki ye naam aapki registry ka hi hai
   acrName: 'crhrmsenterprise'
   backendImageName: 'hrms-backend-service'
-  frontendImageName: 'hrms-frontend-service'
   buildTag: '$(Build.BuildId)'
   # ⚠️ Pakka karein ki ye naam aapke service connection ka hi hai
   azureServiceConnection: 'sc-hrms-enterprise'
-  # ⚠️ FrontEnd Resource configuration controls
-  frontendAppName: 'app-hrms-frontend-ui'
   resourceGroupName: 'rg-hrms-enterprise'
 
 stages:
@@ -45,36 +42,28 @@ stages:
       displayName: 'Execute Production Transpilation via Vite Builder'
 
 - stage: PackageAndPushContainers
-  displayName: 'Stage 2: Package & Push Container Assets'
+  displayName: 'Stage 2: Package & Push Backend Assets'
   dependsOn: BuildAndValidate
   condition: succeeded()
   jobs:
   - job: Build_And_Publish
-    displayName: 'Container Layer Compilation'
+    displayName: 'Backend Container Layer Compilation'
     steps:
-    # 🔥 Using native AzureCLI@2 task to securely log in and push to your ACR
+    # 🔥 केवल बैकएंड कंटेनर को बिल्ड और पुश किया जाएगा क्योंकि फ्रंटएंड स्टेटिक वेब ऐप पर जा रहा है
     - task: AzureCLI@2
-      displayName: 'Login, Bake & Push Immutable Containers via Azure CLI'
+      displayName: 'Login, Bake & Push Immutable Backend Container via Azure CLI'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          # 1. Native Azure login handshake to your specific Container Registry
           az acr login --name $(acrName)
-          
-          # 2. Build production images with absolute internal workspace targets
           docker build -f ./backend/Dockerfile -t $(acrName).azurecr.io/$(backendImageName):$(buildTag) -t $(acrName).azurecr.io/$(backendImageName):latest ./backend
-          docker build -f ./frontend/Dockerfile -t $(acrName).azurecr.io/$(frontendImageName):$(buildTag) -t $(acrName).azurecr.io/$(frontendImageName):latest ./frontend
-          
-          # 3. Stream and push image layers to your cloud repository logs
           docker push $(acrName).azurecr.io/$(backendImageName):latest
           docker push $(acrName).azurecr.io/$(backendImageName):$(buildTag)
-          docker push $(acrName).azurecr.io/$(frontendImageName):latest
-          docker push $(acrName).azurecr.io/$(frontendImageName):$(buildTag)
 
 - stage: DeployToAzureCloud
-  displayName: 'Stage 3: Continuous Deployment to App Service'
+  displayName: 'Stage 3: Continuous Deployment to Azure Cloud'
   dependsOn: PackageAndPushContainers
   condition: succeeded()
   jobs:
@@ -104,35 +93,13 @@ stages:
           echo "Backend App Service successfully awakened!"
 
   - job: Deploy_Frontend
-    displayName: 'Deploy React UI Engine to App Service'
+    displayName: 'Deploy React UI Engine to Static Web App'
     dependsOn: Deploy_Backend
     steps:
+    # 🚀 सुधरा हुआ स्टैटिक वेब ऐप टास्क - टोकन को बिना ब्रैकेट के सीधे स्ट्रिंग में डाला गया है
     - task: AzureStaticWebApp@0
       displayName: 'Force Deploy Frontend to Static Web App'
       inputs:
-        app_location: '/frontend'        # आपके फ्रंटएंड कोड का फोल्डर पाथ
-        output_location: '/frontend/dist' # Vite का बिल्ड आउटपुट फोल्डर
-        azure_static_web_apps_api_token: '$(76c9bd2528b9dc0b805204fe803271a9e6efecdc338063da4560739d7f9a9d6902-7d204b8b-fe3b-491d-b662-a7812712b3740002717073dca200)'
-
-    # 🚀 Step 1: Deploy Frontend Container to Azure Web App (Docker Container mode)
-    - task: AzureWebAppContainer@1
-      displayName: 'Force Deploy Frontend Container'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        appName: '$(frontendAppName)'
-        containers: '$(acrName).azurecr.io/$(frontendImageName):latest'
-        appSettings: '-WEBSITES_PORT 80 -WEBSITES_CONTAINER_START_TIME_LIMIT 1800 -SCM_DO_BUILD_DURING_DEPLOYMENT false'
-
-    # 🔥 Step 2: Force Reset to break portal loops and start UI container fresh
-    - task: AzureCLI@2
-      displayName: 'Unlock & Force Restart Frontend App Service'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          echo "Stopping Frontend Web App to release stuck threads..."
-          az webapp stop --name $(frontendAppName) --resource-group $(resourceGroupName)
-          az webapp config appsettings set --name $(frontendAppName) --resource-group $(resourceGroupName) --settings WEBSITES_PORT=80
-          az webapp start --name $(frontendAppName) --resource-group $(resourceGroupName)
-          echo "Frontend UI App Service successfully awakened!"
+        app_location: '/frontend'        
+        output_location: '/frontend/dist' 
+        azure_static_web_apps_api_token: '76c9bd2528b9dc0b805204fe803271a9e6efecdc338063da4560739d7f9a9d6902-7d204b8b-fe3b-491d-b662-a7812712b3740002717073dca200'
