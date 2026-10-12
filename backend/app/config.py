@@ -5,8 +5,8 @@ import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # System App Settings
-    PROJECT_NAME: str = "SHIVMANI HRMS Enterprise API"
+    PROJECT_NAME: str = "HRMS Enterprise"
+    APP_NAME: str = "HRMS Enterprise"  # <--- यह नई लाइन क्लास के अंदर जोड़ें
     API_V1_STR: str = "/api/v1"
     
     # Security Layer

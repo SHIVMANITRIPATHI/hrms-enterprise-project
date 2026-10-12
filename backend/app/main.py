@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Shutting down {settings.APP_NAME} Backend Service...")
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title=settings.PROJECT_NAME,
     version=settings.APP_VERSION,
     description="SHIVMANI HRMS — Enterprise Role-Based Human Resource Management System",
     docs_url="/docs",
