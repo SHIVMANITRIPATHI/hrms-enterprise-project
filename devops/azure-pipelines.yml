@@ -8,11 +8,9 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # ⚠️ Pakka karein ki ye naam aapki registry ka hi hai
   acrName: 'crhrmsenterprise'
   backendImageName: 'hrms-backend-service'
   buildTag: '$(Build.BuildId)'
-  # ⚠️ Pakka karein ki ye naam aapke service connection ka hi hai
   azureServiceConnection: 'sc-hrms-enterprise'
   resourceGroupName: 'rg-hrms-enterprise'
 
@@ -40,6 +38,13 @@ stages:
         npm ci
         npm run build
       displayName: 'Execute Production Transpilation via Vite Builder'
+    
+    # 📦 बने हुए कंपाइल्ड 'dist' फोल्डर को पाइपलाइन की आर्टिफैक्ट स्टोरेज में सुरक्षित करें
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: 'frontend/dist'
+        artifact: 'frontend-static-build'
+      displayName: 'Publish Compiled Frontend UI Artifact'
 
 - stage: PackageAndPushContainers
   displayName: 'Stage 2: Package & Push Backend Assets'
@@ -93,11 +98,20 @@ stages:
 
   - job: Deploy_Frontend
     displayName: 'Deploy React UI Engine to Static Web App'
+    dependsOn: Deploy_Backend
     steps:
-    # 🚀 बिल्कुल सटीक स्टैटिक वेब ऐप कॉन्फ़िगरेशन
-    - task: AzureStaticWebApp@0
-      displayName: 'Force Deploy Frontend to Static Web App'
+    # 📥 Stage 1 में कंपाइल किए गए फ्रंटएंड 'dist' फोल्डर को इस एजेंट पर डाउनलोड करें
+    - task: DownloadPipelineArtifact@2
       inputs:
-        app_location: '/frontend'      # जहां आपका package.json और सोर्स कोड है
-        output_location: 'dist'         # बिल्ड होने के बाद जो फोल्डर बनता है (बिना किसी प्री-फिक्स के)
+        artifact: 'frontend-static-build'
+        path: '$(Pipeline.Workspace)/frontend-static-build'
+      displayName: 'Download Compiled Frontend UI Artifact'
+
+    # 🚀 सीधे आर्टिफैक्ट फ़ोल्डर को रूट मानकर फ़ोर्स अपलोड करें
+    - task: AzureStaticWebApp@0
+      displayName: 'Force Deploy Pre-Built Artifact to Static Web App'
+      inputs:
+        app_location: '/' 
+        output_location: '$(Pipeline.Workspace)/frontend-static-build' 
+        skip_app_build: true # 👈 Azure के डिफ़ॉल्ट बिल्ड मैनेजर को बायपास करें
         azure_static_web_apps_api_token: '76c9bd2528b9dc0b805204fe803271a9e6efecdc338063da4560739d7f9a9d6902-7d204b8b-fe3b-491d-b662-a7812712b3740002717073dca200'
