@@ -6,8 +6,9 @@ from app.config import settings
 logger = logging.getLogger("hrms.database")
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.get_database_url(),
     pool_pre_ping=True,
+    pool_recycle=300,
     echo=False  # Direct hardcoded False to prevent debug mismatches
 )
 

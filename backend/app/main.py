@@ -45,6 +45,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Seamless routing fallback: Auto-prefix requests missing /api (e.g. /auth/login -> /api/auth/login)
+@app.middleware("http")
+async def api_prefix_rewrite_middleware(request: Request, call_next):
+    path = request.scope.get("path", "")
+    excluded = ("/docs", "/redoc", "/openapi.json", "/health", "/favicon.ico", "/robots")
+    if not path.startswith("/api") and not any(path.startswith(ex) for ex in excluded) and path != "/":
+        request.scope["path"] = f"/api{path}"
+    return await call_next(request)
+
+
 # Exception Handlers
 @app.exception_handler(IntegrityError)
 async def integrity_error_handler(request: Request, exc: IntegrityError):
@@ -81,6 +91,17 @@ app.include_router(performance_router)
 app.include_router(reports_router)
 app.include_router(settings_router)
 app.include_router(audit_router)
+
+@app.get("/", tags=["Health"])
+async def root():
+    return {
+        "status": "HEALTHY",
+        "app_name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
+        "docs": "/docs",
+        "health": "/health"
+    }
 
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])

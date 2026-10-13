@@ -8,7 +8,18 @@ import {
   OverviewDashboardReport, CompanySettings, AuditLog, EmployeeDocument
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://app-hrms-backend-api-cufhcxcjbpfzefa5.centralindia-01.azurewebsites.net/';
+const getApiBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  let base = (envUrl && envUrl.trim()) || 'https://app-hrms-backend-api-cufhcxcjbpfzefa5.centralindia-01.azurewebsites.net/api';
+  base = base.replace(/\/+$/, '');
+  if (!base.endsWith('/api')) {
+    base = `${base}/api`;
+  }
+  return base;
+};
+
+const API_BASE = getApiBaseUrl();
+
 
 // Token Management
 let authToken: string | null = localStorage.getItem('shivmani_auth_token');
