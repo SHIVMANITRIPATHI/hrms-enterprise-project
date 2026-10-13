@@ -235,11 +235,11 @@ The master database seed contains pre-configured test accounts across different 
 
 | Employee Code | Employee Name | System Role | Assigned Department | Default Password |
 | :---: | :---: | :---: | :---: | :---: |
-| `Emp-0001` | Neha Mishra | HR Admin | Human Resources | `Mponline@123` |
-| `Emp-0002` | Sangeeta Mishra | HR Operations | Human Resources | `Mponline@123` |
-| `Emp-0003` | Rajesh Kumar | Senior Engineer (Employee) | Engineering | `Mponline@123` |
-| `Emp-0004` | Ananya Rao | Frontend Engineer (Employee) | Engineering | `Mponline@123` |
-| `Emp-0005` | Shivmani Sharma | VP of Engineering (HR Admin) | Engineering | `Mponline@123` |
+| `Emp-0001` | Neha Mishra | HR Admin | Human Resources | ` |
+| `Emp-0002` | Sangeeta Mishra | HR Operations | Human Resources |  |
+| `Emp-0003` | Rajesh Kumar | Senior Engineer (Employee) | Engineering |  |
+| `Emp-0004` | Ananya Rao | Frontend Engineer (Employee) | Engineering ||
+| `Emp-0005` | Shivmani Sharma | VP of Engineering (HR Admin) | Engineering |  |
 
 ---
 
@@ -251,7 +251,7 @@ The master database seed contains pre-configured test accounts across different 
 | :--- | :--- | :--- |
 | `APP_NAME` | Display name of the enterprise instance | `SHIVMANI HRMS` |
 | `ENVIRONMENT` | Runtime deployment stage | `development` or `production` |
-| `DATABASE_URL` | SQLAlchemy connection string | `mssql+aioodbc://username:password@server:1433/database?driver=ODBC+Driver+18+for+SQL+Server` |
+| `DATABASE_URL` | SQLAlchemy connection string |  |
 | `CORS_ORIGINS` | JSON-encoded array of allowed browser origins | `["http://localhost:5173", "http://127.0.0.1:5173"]` |
 | `SECRET_KEY` | Symmetric key for session token signing | 64-character random hexadecimal string |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Lifetime of user authentication tokens | `1440` (24 hours) |
